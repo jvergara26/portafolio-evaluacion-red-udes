@@ -10,7 +10,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Renderizar y revisar las diez diapositivas restauradas
+      - name: Renderizar las últimas correcciones
         shell: bash
         run: |
           python -m pip -q install CairoSVG Pillow
@@ -18,11 +18,11 @@ jobs:
           import cairosvg,base64
           from PIL import Image
           from io import BytesIO
-          for num in [10,11,12,16,24,25,27,34,35,37]:
+          for num in [16,24,25]:
               svg=f'assets/coda6/diapositiva-{num:02}-integrada.svg'
               png=cairosvg.svg2png(url=svg,output_width=1000,output_height=562)
               im=Image.open(BytesIO(png)).convert('RGB')
               buf=BytesIO()
-              im.save(buf,format='JPEG',quality=76,optimize=True)
-              print(f'RENDER_IMAGE_{num:02}='+base64.b64encode(buf.getvalue()).decode('ascii'))
+              im.save(buf,format='JPEG',quality=75,optimize=True)
+              print(f'RENDER_FINAL_{num:02}='+base64.b64encode(buf.getvalue()).decode('ascii'))
           PY
