@@ -10,21 +10,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Convertir miniaturas de originales a vista revisable
+      - name: Proporcionar imágenes originales para correcciones localizadas
         shell: bash
         run: |
-          python -m pip -q install Pillow
           python - <<'PY'
-          from PIL import Image
-          from io import BytesIO
           import base64
-          for i in [9,10,12,16,24,25,34,35]:
-              p=f'assets/coda6/diapositiva-{i:02}.jpg'
-              with Image.open(p) as im:
-                  im=im.convert('RGB')
-                  im.thumbnail((1000,563))
-                  buf=BytesIO()
-                  im.save(buf,format='JPEG',quality=70,optimize=True)
-                  b64=base64.b64encode(buf.getvalue()).decode('ascii')
-                  print(f'DESIGN_IMAGE_{i:02}={b64}')
+          for i in [10,11,12,16,24,25,27,34,35,37]:
+              with open(f'assets/coda6/diapositiva-{i:02}.jpg','rb') as f:
+                  b64=base64.b64encode(f.read()).decode('ascii')
+                  print(f'ORIGINAL_IMAGE_{i:02}={b64}')
           PY
