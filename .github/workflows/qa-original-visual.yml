@@ -10,15 +10,19 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Muestrear paleta exacta del diseño original
+      - name: Renderizar y revisar las diez diapositivas restauradas
         shell: bash
         run: |
-          python -m pip -q install Pillow
+          python -m pip -q install CairoSVG Pillow
           python - <<'PY'
+          import cairosvg,base64
           from PIL import Image
-          for num in (10,11,12,16,24,25,27,34,35,37):
-              im=Image.open(f'assets/coda6/diapositiva-{num:02}.jpg').convert('RGB')
-              w,h=im.size
-              ps=[(.03,.50),(.03,.90),(.09,.41),(.08,.59),(.08,.87),(.18,.52),(.18,.63),(.72,.46),(.72,.60),(.70,.84),(.05,.24)]
-              print(f'PALETTE_{num} DIM={w}x{h}='+','.join(f'{x:.2f}_{y:.2f}:{im.getpixel((int(x*w),int(y*h)))}' for x,y in ps))
+          from io import BytesIO
+          for num in [10,11,12,16,24,25,27,34,35,37]:
+              svg=f'assets/coda6/diapositiva-{num:02}-integrada.svg'
+              png=cairosvg.svg2png(url=svg,output_width=1000,output_height=562)
+              im=Image.open(BytesIO(png)).convert('RGB')
+              buf=BytesIO()
+              im.save(buf,format='JPEG',quality=76,optimize=True)
+              print(f'RENDER_IMAGE_{num:02}='+base64.b64encode(buf.getvalue()).decode('ascii'))
           PY
