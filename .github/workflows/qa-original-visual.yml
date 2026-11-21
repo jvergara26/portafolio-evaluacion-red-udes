@@ -1,0 +1,30 @@
+name: Verificacion temporal de estilo COdA-6
+on:
+  push:
+    paths:
+      - .github/workflows/qa-original-visual.yml
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Convertir miniaturas de originales a vista revisable
+        shell: bash
+        run: |
+          python -m pip -q install Pillow
+          python - <<'PY'
+          from PIL import Image
+          from io import BytesIO
+          import base64
+          for i in [9,10,12,16,24,25,34,35]:
+              p=f'assets/coda6/diapositiva-{i:02}.jpg'
+              with Image.open(p) as im:
+                  im=im.convert('RGB')
+                  im.thumbnail((1000,563))
+                  buf=BytesIO()
+                  im.save(buf,format='JPEG',quality=70,optimize=True)
+                  b64=base64.b64encode(buf.getvalue()).decode('ascii')
+                  print(f'DESIGN_IMAGE_{i:02}={b64}')
+          PY
