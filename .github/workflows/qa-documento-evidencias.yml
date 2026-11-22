@@ -1,0 +1,47 @@
+name: Revisión visual temporal del documento de evidencias
+on:
+  push:
+    paths:
+      - .github/workflows/qa-documento-evidencias.yml
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar herramientas de comprobación
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends libreoffice-writer poppler-utils python3-pil
+      - name: Renderizar el Word y elaborar vista de control
+        shell: bash
+        run: |
+          mkdir -p /tmp/docqa
+          libreoffice -env:UserInstallation=file:///tmp/docqa/lo --headless --convert-to pdf --outdir /tmp/docqa entregas/Documento_Evidencias_Portafolio_UDES.docx
+          pdfinfo /tmp/docqa/Documento_Evidencias_Portafolio_UDES.pdf | grep Pages:
+          pdftotext /tmp/docqa/Documento_Evidencias_Portafolio_UDES.pdf /tmp/docqa/doc.txt
+          for phrase in 'Página 1. Inicio' 'Página 2. Modelos de evaluación y RED' 'Subpágina 2.1' 'Subpágina 2.2' 'Página 3. Rediseño' 'Página 4. Aplicación' 'Página 5. Referencias' 'Conclusiones' 'Referencias bibliográficas'; do
+            if ! grep -q "$phrase" /tmp/docqa/doc.txt; then echo "FALTA: $phrase"; exit 1; fi
+          done
+          pdftoppm -jpeg -r 40 /tmp/docqa/Documento_Evidencias_Portafolio_UDES.pdf /tmp/docqa/page >/dev/null 2>&1
+          python - <<'PY'
+          import base64,glob,io
+          from PIL import Image,ImageDraw
+          files=sorted(glob.glob('/tmp/docqa/page-*.jpg'))
+          w,h=232,300
+          cols=4; rows=(len(files)+cols-1)//cols
+          sheet=Image.new('RGB',(cols*w,rows*h),'#e2e5e1')
+          for index,f in enumerate(files):
+              im=Image.open(f).convert('RGB')
+              im.thumbnail((w-16,h-30))
+              x=(index%cols)*w+(w-im.width)//2
+              y=(index//cols)*h+12
+              sheet.paste(im,(x,y))
+              ImageDraw.Draw(sheet).text(((index%cols)*w+10,(index//cols+1)*h-21),f'Página {index+1}',fill='#162d26')
+          buf=io.BytesIO()
+          sheet.save(buf,format='JPEG',quality=70,optimize=True)
+          print('NUMERO_PAGINAS='+str(len(files)))
+          print('CONTROL_VISUAL='+base64.b64encode(buf.getvalue()).decode('ascii'))
+          PY
