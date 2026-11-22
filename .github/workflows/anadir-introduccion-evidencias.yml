@@ -1,0 +1,67 @@
+name: Incorporar introducción a evidencias UDES
+on:
+  push:
+    paths:
+      - .github/workflows/anadir-introduccion-evidencias.yml
+      - tools/anadir_introduccion_evidencias.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar herramientas
+        run: |
+          python -m pip install --quiet python-docx Pillow
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends libreoffice-writer poppler-utils
+      - name: Insertar introducción preservando las 26 capturas
+        run: python tools/anadir_introduccion_evidencias.py
+      - name: Renderizar y comprobar la paginación
+        shell: bash
+        run: |
+          mkdir -p /tmp/qa-intro
+          libreoffice -env:UserInstallation=file:///tmp/qa-intro/lo --headless --convert-to pdf --outdir /tmp/qa-intro entregas/Documento_Evidencias_Portafolio_UDES_Final.docx
+          pdfinfo /tmp/qa-intro/Documento_Evidencias_Portafolio_UDES_Final.pdf | grep Pages:
+          pdftotext -f 2 -l 2 /tmp/qa-intro/Documento_Evidencias_Portafolio_UDES_Final.pdf - | grep -E "Introducción|La evaluación de recursos educativos digitales|Este documento reúne"
+          pdftotext -f 3 -l 3 /tmp/qa-intro/Documento_Evidencias_Portafolio_UDES_Final.pdf - | grep "Acceso y estructura del portafolio"
+          pdftoppm -f 2 -l 3 -scale-to 1200 -jpeg -singlefile /tmp/qa-intro/Documento_Evidencias_Portafolio_UDES_Final.pdf /tmp/qa-intro/intro 2>/dev/null || true
+          python - <<'PY'
+          from PIL import Image
+          from io import BytesIO
+          import base64
+          from pathlib import Path
+          path=Path('/tmp/qa-intro/intro.jpg')
+          if path.exists():
+              with Image.open(path) as im:
+                  b=BytesIO()
+                  im.convert('RGB').save(b,format='JPEG',quality=76,optimize=True)
+              print('INTRO_VISUAL='+base64.b64encode(b.getvalue()).decode('ascii'))
+          PY
+      - name: Conservar Word final
+        uses: actions/upload-artifact@v4
+        with:
+          name: Documento-Evidencias-UDES-Final
+          path: entregas/Documento_Evidencias_Portafolio_UDES_Final.docx
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publicar Word final en repositorio
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add entregas/Documento_Evidencias_Portafolio_UDES_Final.docx
+          if ! git diff --cached --quiet; then
+            git commit -m "Publicar documento de evidencias UDES con introducción académica"
+            git push
+          fi
