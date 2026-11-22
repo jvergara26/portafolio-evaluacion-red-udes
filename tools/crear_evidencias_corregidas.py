@@ -106,8 +106,15 @@ def screenshot_exact(page,shotkind,selector,filename,pathname):
         if shotkind=="multielemento":indices=list(range(0,5))
         else:indices=list(range(max(5,count-5),count))
         boxes=[items.nth(k).bounding_box() for k in indices]
-        print("REFERENCIAS_DEBUG",pathname,"indices",indices,"total",count,"boxes",boxes,flush=True)
         if any(b is None for b in boxes):raise RuntimeError("Referencia no visible")
+        # Playwright interpreta clip respecto del viewport actual, no del documento.
+        # Desplazar la ventana al inicio del grupo y recalcular sus bordes.
+        first_top=min(b["y"] for b in boxes)
+        page.evaluate("(y) => window.scrollBy(0,y)", first_top-36)
+        page.wait_for_timeout(170)
+        boxes=[items.nth(k).bounding_box() for k in indices]
+        if any(b is None for b in boxes):raise RuntimeError("Referencia no visible")
+        print("REFERENCIAS_DEBUG",pathname,"indices",indices,"total",count,"boxes",boxes,flush=True)
         left=min(b["x"] for b in boxes);right=max(b["x"]+b["width"] for b in boxes)
         top=min(b["y"] for b in boxes);bottom=max(b["y"]+b["height"] for b in boxes)
         # La altura se calcula a partir del borde inferior del último <li>,
