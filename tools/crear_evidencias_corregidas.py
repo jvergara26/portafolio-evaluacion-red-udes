@@ -106,6 +106,7 @@ def screenshot_exact(page,shotkind,selector,filename,pathname):
         if shotkind=="multielemento":indices=list(range(0,5))
         else:indices=list(range(max(5,count-5),count))
         boxes=[items.nth(k).bounding_box() for k in indices]
+        print("REFERENCIAS_DEBUG",pathname,"indices",indices,"total",count,"boxes",boxes,flush=True)
         if any(b is None for b in boxes):raise RuntimeError("Referencia no visible")
         left=min(b["x"] for b in boxes);right=max(b["x"]+b["width"] for b in boxes)
         top=min(b["y"] for b in boxes);bottom=max(b["y"]+b["height"] for b in boxes)
